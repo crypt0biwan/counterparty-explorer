@@ -116,6 +116,11 @@
                 // PCFET0NUWVBFI text/html 
             }
 
+            const get_json = async url => {
+                const formatted_url = url.startsWith('http') ? url : 'http://' + url
+                return axios.get(formatted_url)
+            }
+
             const get_image = async (x) => {
                 let ret = {
                     desc: null
@@ -134,8 +139,31 @@
                         ret.img = `"${atob(stripped)}"`
                     }
                 } else if(x.description.endsWith('.json')) {
-                    ret.img = 'external img'
-                    ret.desc = x.description
+                    try {
+                        const json_data = (await get_json(x.description)).data
+
+                        if(json_data) {
+                            if(json_data.image) {
+                                ret.img = `<img src="${json_data.image}" class="image-pixelated" />`
+                            } else if(json_data.image_large) {
+                                ret.img = `<img src="${json_data.image_large}" class="image-pixelated" />`
+                            }
+
+                            // if(json_data.description) {
+                            //     ret.desc = json_data.description
+                            // }
+                        } else {
+                            ret.img = 'external img'
+                            ret.desc = x.description
+                        }
+                    } catch(e) {
+                        ret.img = 'external img'
+                        ret.desc = x.description
+                    }
+                } else if(x.description.startsWith('http')) {
+                    ret.img = `<img src="${x.description}" class="image-pixelated" />`
+                } else if(x.description.startsWith('imgur/')) {
+                    ret.img = `<img src="https://i.imgur.com/${x.description.split(';')[0].replace('imgur/','')}" class="image-pixelated" />`
                 } else {
                     ret.img = '[no image]'
                     ret.desc = x.description
