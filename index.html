@@ -21,6 +21,7 @@
     </style>
 
     <script src="js/bech32-js.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
     <body>
         <div class="container mb-3">
@@ -144,24 +145,20 @@
             }
 
             const get_rpc = async data => {
-                let myHeaders = new Headers();
-                myHeaders.append("Content-Type", "application/json; charset=UTF-8");
-                myHeaders.append("Accept", "application/json, text/javascript");
-                myHeaders.append("Authorization", "Basic cnBjOnJwYw==");
-
-                let requestOptions = {
-                    method: 'POST',
-                    headers: myHeaders,
-                    body: JSON.stringify(data),
-                };
-
-                return fetch(`http://api.counterparty.io:4000/api/?ts=${+new Date()}`, requestOptions)
-                    .then(response => response.json())
-                    .catch(error => console.log('error', error));
+                return axios.post(
+                    `https://api.counterparty.io:4001/?ts=${+new Date()}`, 
+                    data,
+                    {
+                        auth:{
+                            username:"rpc",
+                            password:"rpc"
+                        }
+                    }
+                )
             }
 
             const get_asset = async asset => {
-                return get_rpc({ 
+                return await get_rpc({ 
                     "jsonrpc": "2.0", 
                     "id": 0, 
                     "method": "get_asset_info", 
@@ -170,7 +167,7 @@
             }
 
             const get_balances = async address => {
-                return get_rpc({ 
+                return await get_rpc({ 
                     "jsonrpc": "2.0", 
                     "id": 0, 
                     "method": "get_balances", 
@@ -192,7 +189,7 @@
                         asset, quantity, divisible
                     } = x
 
-                    const assetInfo = await get_image((await get_asset(asset)).result[0])
+                    const assetInfo = await get_image((await get_asset(asset)).data.result[0])
                     
                     document.querySelector(`#img-${asset}`).innerHTML = assetInfo.img
 
@@ -269,7 +266,7 @@
                 try {
                     showLoadingMessage('Getting items from API')
 
-                    balances = (await get_balances(address)).result
+                    balances = (await get_balances(address)).data.result
                     
                     result.innerHTML = get_table_html()
 
