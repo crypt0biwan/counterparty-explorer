@@ -291,7 +291,7 @@ form.querySelector('.btn-balances').addEventListener('click', event => {
 
 const init = async () => {
     // first, download cards
-    cards = (await get_json(`${window.location.protocol}//${window.location.host}/json/cards.json`)).data
+    cards = (await get_json(`${window.location.protocol}//${window.location.host}${window.location.pathname}json/cards.json`)).data
 }
 
 init()
