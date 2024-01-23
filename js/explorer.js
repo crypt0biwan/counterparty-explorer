@@ -376,6 +376,7 @@ const get_transactions_table_html = (filteredBalances) => {
 const check_transactions = async (address) => {
     try {
         showLoadingMessage('Getting txs from API')
+        transactions = []
 
         let credits = (await get_credits(address)).data.result.map(i => ({
             type: "credit",
@@ -389,11 +390,17 @@ const check_transactions = async (address) => {
         transactions = _.orderBy([].concat(credits, debits), ['block_index'], ['desc'])
         let filteredBalances = _.filter(transactions, x => x.quantity > 0)
 
-        result.innerHTML = get_transactions_table_html(filteredBalances)
+        if(filteredBalances.length) {
+            result.innerHTML = get_transactions_table_html(filteredBalances)
+            update_images(filteredBalances)
+            
+            new Tablesort(document.getElementById('balances'))
+        } else {
+            result.innerHTML = `<div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> No transactions found for ${address}
+        </div>`
+        }
 
-        update_images(filteredBalances)
-
-        new Tablesort(document.getElementById('balances'))
     } catch(e) {
         console.log(e)
         showApiError(`<div class="alert alert-danger" role="alert">
