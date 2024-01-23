@@ -1,5 +1,6 @@
 const form = document.querySelector('form')
 let balances = []
+let transactions = []
 
 const header = document.querySelector('#header')
 const result = document.querySelector('#result')
@@ -154,17 +155,55 @@ const get_balances = async address => {
     })
 }
 
-const update_images = () => {
-    _.each(_.filter(balances, x => x.quantity > 0), async x => {
+const get_credits = async address => {
+    return await get_rpc({ 
+        "jsonrpc": "2.0", 
+        "id": 0, 
+        "method": "get_credits", 
+        "params": {
+            "filters": [
+                {
+                    "field": "address",
+                    "op": "==",
+                    "value": address
+                }
+            ],
+            "order_by": "block_index",
+            "order_dir": "desc"
+        }
+    })
+}
+
+const get_debits = async address => {
+    return await get_rpc({ 
+        "jsonrpc": "2.0", 
+        "id": 0, 
+        "method": "get_debits", 
+        "params": {
+            "filters": [
+                {
+                    "field": "address",
+                    "op": "==",
+                    "value": address
+                }
+            ],
+            "order_by": "block_index",
+            "order_dir": "desc"
+        }
+    })
+}
+
+const update_images = (assets = balances) => {
+    _.each(_.filter(assets, x => x.quantity > 0), async x => {
         const {
-            asset, quantity, divisible
+            asset
         } = x
 
         const assetInfo = await get_image((await get_asset(asset)).data.result[0])
         
         document.querySelector(`#img-${asset}`).innerHTML = assetInfo.img
 
-        if(assetInfo.desc !== null) {
+        if(assetInfo.desc !== null && document.querySelector(`#description-${asset}`)) {
             document.querySelector(`#description-${asset}`).innerHTML = assetInfo.desc
         }
 
@@ -174,7 +213,7 @@ const update_images = () => {
     })
 }
 
-const get_table_html = () => {
+const get_assets_table_html = () => {
     let filteredBalances = _.filter(balances, x => x.quantity > 0)
     let html = ''
 
@@ -242,13 +281,134 @@ const get_table_html = () => {
     return html    
 }
 
+const get_transactions_table_html = () => {
+    let filteredBalances = transactions // _.filter(transactions, x => x.quantity > 0)
+    let html = ''
+
+    if(filteredBalances.length) {
+        html = 
+            `<div class="table-responsive">
+                <table id="balances" class="table table-striped mb-5">
+                    <thead>
+                        <tr>
+                            <th scope="col">Image</th>
+
+                            <th scope="col">Type</th>
+
+                            <th scope="col">Block</th>
+                            <th scope="col">Asset</th>
+                            <th scope="col">Collection</th>
+                            <th style="text-align: right; padding-right: 20px;" scope="col">Quantity</th>
+                            <th scope="col">TX</th>
+                        </tr>
+                    </thead>
+                <tbody>`
+
+            _.each(filteredBalances, x => {
+                const {
+                    type, action, block_index, asset, address, quantity, calling_function, event
+                } = x
+
+                const tx_type = action ? action : calling_function
+                let icon = ''
+
+                switch(tx_type) {
+                    case 'dividend': {
+                        icon = '<i class="bi bi-piggy-bank-fill"></i>'
+                        break
+                    }
+                    case 'send': {
+                        icon = '<i class="bi bi-arrow-up-right-square"></i>'
+                        break
+                    }
+                    default: {
+                        if(type === 'debit') {
+                            icon = '<i class="bi bi-arrow-up-right-square"></i>'
+                        } else {
+                            icon = '<i class="bi bi-arrow-down-right-square-fill"></i>'
+                        }
+                        break
+                    }
+                }
+
+                html += 
+                    `<tr>
+                        <td id="img-${asset}" class="col-1">
+                            <!-- gets filled async -->
+                        </td>
+                        
+                        <td class="col-4">
+                            <span title="${tx_type}">${icon}</span>
+                        </td>
+
+                        <td class="col-4">
+                            ${formatValue(block_index)}
+                        </td>
+
+                        <td class="col-4">
+                            ${asset}
+                        </td>
+
+                        <td id="collection-${asset}" class="col-4">
+                            <!-- gets filled async -->
+                        </td>
+                        
+                        <td style="text-align: right; padding-right: 20px;">
+                            ${formatValue(quantity)}
+                        </td>
+                        
+                        <td class="col-4">
+                            <a href="https://www.xcp.dev/tx/${event}" target="_blank">tx&nbsp;details</a>
+                        </td>
+                    </tr>`                    
+            })
+        
+        html +=
+            `</tbody>
+            </table>
+            </div>`
+    } else {
+        html = `No balances for this address`          
+    }
+
+    return html
+}
+
+const check_transactions = async (address) => {
+    try {
+        showLoadingMessage('Getting txs from API')
+
+        let credits = (await get_credits(address)).data.result.map(i => ({
+            type: "credit",
+            ...i
+        }))
+        let debits = (await get_debits(address)).data.result.map(i => ({
+            type: "debit",
+            ...i
+        }))
+        
+        transactions = _.orderBy([].concat(credits, debits), ['block_index'], ['desc'])
+
+        result.innerHTML = get_transactions_table_html()
+
+        update_images(transactions)
+
+        new Tablesort(document.getElementById('balances'))
+    } catch(e) {
+        console.log(e)
+        showApiError(`<div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> There was a problem fetching the data..
+        </div>`)
+    }
+}
+
 const check_balances = async (address) => {
     try {
-        showLoadingMessage('Getting items from API')
+        showLoadingMessage('Getting assets from API')
 
         balances = (await get_balances(address)).data.result
         
-        result.innerHTML = get_table_html()
+        result.innerHTML = get_assets_table_html()
 
         update_images()
 
@@ -273,7 +433,15 @@ function validateAddress(address) {
             console.log(`${params.address} and ${address} are the same, no need to update the query param`)
         }
 
-        check_balances(address)
+        switch(window.PAGE) {
+            case 'transactions':
+                check_transactions(address)
+                break
+            default:
+                check_balances(address)
+                break
+        }
+
     } else if(address !== '') {
         result.innerHTML = `<div class="alert alert-warning" role="alert">
             This isn't a valid BTC/XCP address
@@ -291,7 +459,7 @@ form.querySelector('.btn-balances').addEventListener('click', event => {
 
 const init = async () => {
     // first, download cards
-    cards = (await get_json(`${window.location.protocol}//${window.location.host}${window.location.pathname}json/cards.json`)).data
+    cards = (await get_json(`https://crypt0biwan.github.io/counterparty-explorer/json/cards.json`)).data
 }
 
 init()
