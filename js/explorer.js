@@ -201,14 +201,18 @@ const update_images = (assets = balances) => {
 
         const assetInfo = await get_image((await get_asset(asset)).data.result[0])
         
-        document.querySelector(`#img-${asset}`).innerHTML = assetInfo.img
+        document.querySelectorAll(`.img-${asset}`).forEach(el => {
+            el.innerHTML = assetInfo.img
+        })
 
         if(assetInfo.desc !== null && document.querySelector(`#description-${asset}`)) {
             document.querySelector(`#description-${asset}`).innerHTML = assetInfo.desc
         }
 
         if(assetInfo.collection !== null) {
-            document.querySelector(`#collection-${asset}`).innerHTML = assetInfo.collection
+            document.querySelectorAll(`.collection-${asset}`).forEach(el => {
+                el.innerHTML = assetInfo.collection
+            })
         }        
     })
 }
@@ -240,7 +244,7 @@ const get_assets_table_html = () => {
 
                 html += 
                     `<tr>
-                        <td id="img-${asset}" class="col-1">
+                        <td class="img-${asset}" class="col-1">
                             <!-- gets filled async -->
                         </td>
                         
@@ -256,7 +260,7 @@ const get_assets_table_html = () => {
                             ${formatValue(quantity)}
                         </td>
                         
-                        <td id="description-${asset}" class="col-4">
+                        <td class="description-${asset}" class="col-4">
                             <!-- gets filled async -->
                         </td>
                         
@@ -281,8 +285,7 @@ const get_assets_table_html = () => {
     return html    
 }
 
-const get_transactions_table_html = () => {
-    let filteredBalances = transactions // _.filter(transactions, x => x.quantity > 0)
+const get_transactions_table_html = (filteredBalances) => {
     let html = ''
 
     if(filteredBalances.length) {
@@ -333,7 +336,7 @@ const get_transactions_table_html = () => {
 
                 html += 
                     `<tr>
-                        <td id="img-${asset}" class="col-1">
+                        <td class="img-${asset}" class="col-1">
                             <!-- gets filled async -->
                         </td>
                         
@@ -349,7 +352,7 @@ const get_transactions_table_html = () => {
                             ${asset}
                         </td>
 
-                        <td id="collection-${asset}" class="col-4">
+                        <td class="collection-${asset}" class="col-4">
                             <!-- gets filled async -->
                         </td>
                         
@@ -388,10 +391,11 @@ const check_transactions = async (address) => {
         }))
         
         transactions = _.orderBy([].concat(credits, debits), ['block_index'], ['desc'])
+        let filteredBalances = _.filter(transactions, x => x.quantity > 0)
 
-        result.innerHTML = get_transactions_table_html()
+        result.innerHTML = get_transactions_table_html(filteredBalances)
 
-        update_images(transactions)
+        update_images(filteredBalances)
 
         new Tablesort(document.getElementById('balances'))
     } catch(e) {
