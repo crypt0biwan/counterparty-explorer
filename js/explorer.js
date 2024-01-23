@@ -320,10 +320,6 @@ const get_transactions_table_html = (filteredBalances) => {
                         icon = '<i class="bi bi-piggy-bank-fill"></i>'
                         break
                     }
-                    case 'send': {
-                        icon = '<i class="bi bi-arrow-up-right-square"></i>'
-                        break
-                    }
                     default: {
                         if(type === 'debit') {
                             icon = '<i class="bi bi-arrow-up-right-square"></i>'
