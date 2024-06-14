@@ -118,7 +118,7 @@ const get_image = async (x) => {
 
 const get_rpc = async data => {
     return axios.post(
-        `https://api.counterparty.io:4001/?ts=${+new Date()}`, 
+        `https://api.counterparty.io:4000/?ts=${+new Date()}`, 
         data,
         {
             auth:{
